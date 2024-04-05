@@ -1,7 +1,6 @@
 import pytest
 from .endpoints import app
 
-
 def get_endpoints() -> list[tuple]:
     ret = []
     for p, dd in app.path_to_params.items():
