@@ -1,5 +1,5 @@
 import pytest
-from .endpoints import app
+from testapp.endpoints import app
 
 def get_endpoints() -> list[tuple]:
     ret = []

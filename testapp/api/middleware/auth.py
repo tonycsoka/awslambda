@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from http import HTTPStatus
 
-def is_authorized(event) -> bool:
-    return True
+def is_authorized(event):
+    return True;
 
 class AuthMiddleware:
     def __init__(self, next: Callable):

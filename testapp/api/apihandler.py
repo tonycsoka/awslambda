@@ -127,6 +127,7 @@ class Api:
         )
 
     def _add_api_endpoint(self, method: str, path: str, func: Callable):
+        logger = get_logger()
         rpath, f_sig, url_params, query_params, body_params, depends, param_types = (
             Api._process_path(path, func)
         )
@@ -137,11 +138,11 @@ class Api:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
             except TypeError as err:
-                return {"status": HTTPStatus.NOT_FOUND.value, "message": f"{err}"}
+                return {"statusCode": HTTPStatus.NOT_FOUND.value, "body": f"{err}"}
             except ValidationError as err:
                 return {
-                    "status": HTTPStatus.BAD_REQUEST.value,
-                    "message": f"{err.json()}",
+                    "statusCode": HTTPStatus.BAD_REQUEST.value,
+                    "body": f"{err.json()}",
                 }
 
         parsed_data = Api.ParseData(
@@ -156,9 +157,9 @@ class Api:
         self.endpoints[HTTPMethod(method)][rpath] = parsed_data
         if not path in self.path_to_params:
             self.path_to_params[path] = OrderedDict()
-        self.path_to_params[path][HTTPMethod(method)] = parsed_data
-        print(f"Registered path : {rpath}")
-        print(f"Signature : {f_sig}")
+        if not HTTPMethod(method) in self.path_to_params[path]:
+            self.path_to_params[path][HTTPMethod(method)] = parsed_data
+        logger.info(f"Registered path", path=path, rpath=rpath)
         return call_api_endpoint
 
     def get(self, path: str):
@@ -212,7 +213,13 @@ class Api:
         content = event.get("body")
         headers = event.get("headers")
 
-        logger.info("Handling request", raw_path=raw_path, method=method)
+        logger.info(
+            "Handling request",
+            Raw_path=raw_path,
+            Method=method,
+            Event=event,
+            Context=context,
+        )
 
         api_out = self.handler(
             method=method,
@@ -242,6 +249,7 @@ class Api:
         body: dict,
         headers: dict,
     ):
+        logger = get_logger()
         if not query_params:
             query_params = {}
         for rpath, parse_d in self.endpoints[HTTPMethod(method)].items():
@@ -252,13 +260,13 @@ class Api:
                     if param := parse_d.f_sig.parameters.get(i):
                         params[i] = param.annotation(j)
                     else:
-                        print(f"unknown param: {i}")
+                        logger.info("unknown param", param=i)
 
                 for i, j in query_params.items():
                     if param := parse_d.f_sig.parameters.get(i):
                         params[i] = param.annotation(j)
                     else:
-                        print(f"unknown param: {i}")
+                        logger.info("unknown param", param=i)
 
                 payload = {
                     "event": event,

@@ -11,9 +11,9 @@ class ExceptionMiddleware:
         try:
             response = self.next(event, context)
             return response
-        except Exception:
+        except Exception as err:
             return {
                 "isBase64Encoded": False,
                 "statusCode": HTTPStatus.BAD_REQUEST,
-                "body": "Unknown error",
+                "body": err,
             }
