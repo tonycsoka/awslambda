@@ -27,8 +27,10 @@ def _populate_parameters(f_sig, payload, *args, **kwargs):
             kwargs[field] = Body(payload["body"])
         elif an_type == Context:
             kwargs[field] = Context(body=payload["context"])
-        elif an_type == Event:
-            kwargs[field] = Event(body=payload["event"])
+        elif an_type == Request:
+            kwargs[field] = Request(body=payload["event"])
+        elif an_type == Response:
+            kwargs[field] = payload.response
         elif an_type == Headers:
             kwargs[field] = Headers(payload["headers"])
         elif inspect.isclass(an_type) and issubclass(an_type, BaseModel):
@@ -58,6 +60,7 @@ class Api:
         depends: tuple
         param_types: dict
         f_sig: inspect.Signature
+        response_status: HTTPStatus
 
     endpoints: dict[HTTPMethod, OrderedDict[str, ParseData]]
     path_to_params: OrderedDict[str, OrderedDict[HTTPMethod, ParseData]]
@@ -96,13 +99,15 @@ class Api:
             if field in url_params:
                 rpath = rpath.replace(r"{{{}}}".format(field), Api.regexes[annotation])
                 param_types[field] = annotation
-            elif annotation and annotation in [Body, File, Event, Context, Headers]:
+            elif annotation and annotation in [Body, File, Request, Context, Headers]:
                 if annotation in [Body, File]:
                     body_params.append(field)
                     param_types[field] = annotation
                 if annotation == Headers:
                     depends.append(field)
                     param_types[field] = annotation
+            elif inspect.isclass(annotation) and issubclass(annotation, Response):
+                param_types[field] = annotation
             elif inspect.isclass(annotation) and issubclass(annotation, BaseModel):
                 body_params.append(field)
                 param_types[field] = annotation
@@ -126,7 +131,7 @@ class Api:
             param_types,
         )
 
-    def _add_api_endpoint(self, method: str, path: str, func: Callable):
+    def _add_api_endpoint(self, method: str, path: str, func: Callable, status_code:HTTPStatus):
         logger = get_logger()
         rpath, f_sig, url_params, query_params, body_params, depends, param_types = (
             Api._process_path(path, func)
@@ -153,6 +158,7 @@ class Api:
             depends=depends,
             param_types=param_types,
             f_sig=f_sig,
+            response_status=status_code,
         )
         self.endpoints[HTTPMethod(method)][rpath] = parsed_data
         if not path in self.path_to_params:
@@ -162,33 +168,33 @@ class Api:
         logger.info(f"Registered path", path=path, rpath=rpath)
         return call_api_endpoint
 
-    def get(self, path: str):
+    def get(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
-            return self._add_api_endpoint(HTTPMethod.GET, path, func)
+            return self._add_api_endpoint(HTTPMethod.GET, path, func, status_code)
 
         return deco
 
-    def put(self, path: str):
+    def put(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
-            return self._add_api_endpoint(HTTPMethod.PUT, path, func)
+            return self._add_api_endpoint(HTTPMethod.PUT, path, func, status_code)
 
         return deco
 
-    def post(self, path: str):
+    def post(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
-            return self._add_api_endpoint(HTTPMethod.POST, path, func)
+            return self._add_api_endpoint(HTTPMethod.POST, path, func, status_code)
 
         return deco
 
-    def patch(self, path: str):
+    def patch(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
-            return self._add_api_endpoint(HTTPMethod.PATCH, path, func)
+            return self._add_api_endpoint(HTTPMethod.PATCH, path, func, status_code)
 
         return deco
 
-    def delete(self, path: str):
+    def delete(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
-            return self._add_api_endpoint(HTTPMethod.DELETE, path, func)
+            return self._add_api_endpoint(HTTPMethod.DELETE, path, func, status_code)
 
         return deco
 
@@ -255,6 +261,7 @@ class Api:
         for rpath, parse_d in self.endpoints[HTTPMethod(method)].items():
             values = re.match(rpath, full_path.rstrip("/"))
             if values:
+                response = Response(statusCode=parse_d.response_status)
                 params = {}
                 for i, j in zip(parse_d.url_params, values.groups()):
                     if param := parse_d.f_sig.parameters.get(i):
@@ -273,9 +280,13 @@ class Api:
                     "context": context,
                     "body": body,
                     "headers": headers,
+                    "response": response,
                 }
 
-                return parse_d.func(payload, **params)
+                body = parse_d.func(payload, **params)
+                if body:
+                    response.body = body
+                return response
         return {
             "statusCode": HTTPStatus.NOT_FOUND.value,
             "body": "Unknown path",
@@ -289,7 +300,14 @@ class Context:
         self.data = body
 
 
-class Event:
+class Response(BaseModel):
+    statusCode:HTTPStatus = HTTPStatus.OK
+    headers:dict[Any,Any] = {}
+    body:Any = None
+    isBase64Encoded:bool = False
+
+
+class Request:
     data: dict
 
     def __init__(self, body: dict):

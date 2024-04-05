@@ -1,4 +1,4 @@
-from .apihandler import Api, Body, Depends, Event, File, Headers
+from .apihandler import Api, Body, Depends, Request, File, Headers
 from .middleware import CORS_HEADERS, AuthMiddleware, CorsMiddleware
 
 __all__ = (
@@ -7,7 +7,7 @@ __all__ = (
     "AuthMiddleware",
     "Api",
     "Body",
-    "Event",
+    "Request",
     "File",
     "Headers",
     "Depends",

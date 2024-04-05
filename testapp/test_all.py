@@ -5,7 +5,7 @@ def get_endpoints() -> list[tuple]:
     ret = []
     for p, dd in app.path_to_params.items():
         for m, pd in dd.items():
-            pr = {i:f"Testing{i}" for i in pd.query_params}
+            pr = {i:f"Testing-{i}" for i in pd.query_params}
             bp = [pd.param_types[i] for i in pd.body_params]
             print(p, m,  pr, bp)
             ret.append((p, m, pr, bp,))

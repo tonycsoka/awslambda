@@ -1,3 +1,4 @@
+from testapp.api.apihandler import Response
 from .api import Api
 import pytest
 
@@ -13,6 +14,6 @@ def post_test(uid:str):
 
 
 @app.get("/test/{uid}/req/{reqid}")
-def get_bob(uid:str, reqid:str, name:str):
+def get_bob(uid:str, reqid:str, name:str, response:Response):
     return {"hello": uid, "world":reqid}
 
