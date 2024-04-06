@@ -10,12 +10,16 @@ from typing import Annotated, Any, OrderedDict, get_args, get_origin
 from pydantic import BaseModel, ValidationError
 from structlog import get_logger
 
-from .middleware.excep import ExceptionMiddleware
+from testapp.api.exceptions import HttpException
+
+from .middleware.excep import ExceptionMiddleware, serialise_exception
 
 from .middleware import CORS_HEADERS
 
 from .datatypes import Context, Body, Request, Response, Headers, File
 
+from .aws.awseventv1 import EventV1
+from .aws.awseventv2 import EventV2
 
 
 def _populate_parameters(f_sig, payload, *args, **kwargs):
@@ -27,15 +31,15 @@ def _populate_parameters(f_sig, payload, *args, **kwargs):
                 content=payload["body"], headers=Headers(payload["headers"])
             )
         elif an_type == Body:
-            kwargs[field] = Body(payload["body"])
+            kwargs[field] = an_type(payload["body"])
         elif an_type == Context:
-            kwargs[field] = Context(body=payload["context"])
+            kwargs[field] = an_type(payload["context"])
         elif an_type == Request:
-            kwargs[field] = Request(body=payload["event"])
-        elif an_type == Response:
-            kwargs[field] = payload.response
+            kwargs[field] = an_type(event=payload["event"])
         elif an_type == Headers:
-            kwargs[field] = Headers(payload["headers"])
+            kwargs[field] = an_type(payload["headers"])
+        elif an_type == Response:
+            kwargs[field] = payload["response"]
         elif inspect.isclass(an_type) and issubclass(an_type, BaseModel):
             kwargs[field] = an_type(**payload["body"])
         elif get_origin(an_type) == Annotated:
@@ -110,6 +114,7 @@ class Api:
                     depends.append(field)
                     param_types[field] = annotation
             elif inspect.isclass(annotation) and issubclass(annotation, Response):
+                depends.append(field)
                 param_types[field] = annotation
             elif inspect.isclass(annotation) and issubclass(annotation, BaseModel):
                 body_params.append(field)
@@ -134,7 +139,9 @@ class Api:
             param_types,
         )
 
-    def _add_api_endpoint(self, method: str, path: str, func: Callable, status_code:HTTPStatus):
+    def _add_api_endpoint(
+        self, method: str, path: str, func: Callable, status_code: HTTPStatus
+    ):
         logger = get_logger()
         rpath, f_sig, url_params, query_params, body_params, depends, param_types = (
             Api._process_path(path, func)
@@ -146,9 +153,13 @@ class Api:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
             except TypeError as err:
-                return Response(statusCode=HTTPStatus.NOT_FOUND, body = err)
+                raise HttpException(
+                    status_code=HTTPStatus.NOT_FOUND, body=err.__str__()
+                )
             except ValidationError as err:
-                return Response(statusCode = HTTPStatus.BAD_REQUEST, body = err)
+                raise HttpException(
+                    status_code=HTTPStatus.BAD_REQUEST, body=err.__str__()
+                )
 
         parsed_data = Api.ParseData(
             func=call_api_endpoint,
@@ -168,31 +179,31 @@ class Api:
         logger.info(f"Registered path", path=path, rpath=rpath)
         return call_api_endpoint
 
-    def get(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
+    def get(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
             return self._add_api_endpoint(HTTPMethod.GET, path, func, status_code)
 
         return deco
 
-    def put(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
+    def put(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
             return self._add_api_endpoint(HTTPMethod.PUT, path, func, status_code)
 
         return deco
 
-    def post(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
+    def post(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
             return self._add_api_endpoint(HTTPMethod.POST, path, func, status_code)
 
         return deco
 
-    def patch(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
+    def patch(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
             return self._add_api_endpoint(HTTPMethod.PATCH, path, func, status_code)
 
         return deco
 
-    def delete(self, path: str, status_code:HTTPStatus = HTTPStatus.OK):
+    def delete(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
         def deco(func: Callable):
             return self._add_api_endpoint(HTTPMethod.DELETE, path, func, status_code)
 
@@ -211,27 +222,34 @@ class Api:
 
         response = func(event, context)
         return response.model_dump(mode="json")
-        
-    @staticmethod
-    def parse_event(event) -> tuple:
-        if event.get("version", "1.0") == "1.0":
-            params = event.get("queryStringParameters")
-            raw_path = event.get("path", "")
-            method = event.get("httpMethod")
-            content = event.get("body")
-            headers = event.get("headers")
-        else:
-            params = event.get("queryStringParameters")
-            raw_path = event.get("requestContext").get("http").get("path", "")
-            method = event.get("requestContext").get("http").get("method")
-            content = event.get("body")
-            headers = event.get("headers")
-        return params, raw_path, method, content, headers
 
+    @staticmethod
+    def make_event(event):
+        return Request(event=event).event
+
+    @staticmethod
+    def parse_event(event: EventV1 | EventV2) -> tuple:
+        try:
+            if event.version == "1.0":
+                params = event.queryStringParameters
+                raw_path = event.path
+                method = event.httpMethod
+                content = event.body
+                headers = event.headers
+            else:
+                params = event.queryStringParameters
+                raw_path = event.requestContext.http.path
+                method = event.requestContext.http.method
+                content = event.body
+                headers = event.headers
+            return params, raw_path, method, content, headers
+        except Exception as e:
+            raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=e)
 
     def _lambda_handler(self, event, context):
         logger = get_logger()
-        params,raw_path,method,content,headers = Api.parse_event(event)
+        event = Api.make_event(event)
+        params, raw_path, method, content, headers = Api.parse_event(event)
 
         logger.info(
             "Handling request",
@@ -264,7 +282,7 @@ class Api:
         full_path: str,
         *,
         query_params: dict,
-        event: dict,
+        event: EventV1 | EventV2,
         context: Any,
         body: Any,
         headers: dict,
@@ -275,7 +293,13 @@ class Api:
         for rpath, parse_d in self.endpoints[HTTPMethod(method)].items():
             values = re.match(rpath, full_path.rstrip("/"))
             if values:
-                logger.info("Handler", method=method, full_path=full_path, query_params=query_params, body=body)
+                logger.info(
+                    "Handler",
+                    method=method,
+                    full_path=full_path,
+                    query_params=query_params,
+                    body=body,
+                )
                 logger.info("Found path", ep_path=rpath)
                 response = Response(statusCode=parse_d.response_status)
                 params = {}
@@ -301,7 +325,7 @@ class Api:
 
                 body = parse_d.func(payload, **params)
                 if body:
-                    response.body = json.dumps(body)
+                    response.body = json.dumps(body, default=str)
                 return response
         logger.info("No path found", requested_path=full_path)
         return Response(statusCode=HTTPStatus.NOT_FOUND, body="Unknown path")

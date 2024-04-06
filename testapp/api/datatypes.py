@@ -1,29 +1,28 @@
 from pydantic import BaseModel
+
+from .aws.awseventv1 import EventV1
+from .aws.awseventv2 import EventV2
 from .multipart import MultipartDecoder
 from http import HTTPStatus
 from typing import Any
 
+
 class Context:
     data: Any
 
-    def __init__(self, body: Any):
-        self.data = body
+    def __init__(self, data: Any):
+        self.data = data
 
 
 class Response(BaseModel):
-    statusCode:HTTPStatus = HTTPStatus.OK
-    headers:dict[Any,Any] = {
-        "content-type": "application/json"
-    }
-    body:Any = None
-    isBase64Encoded:bool = False
+    statusCode: HTTPStatus = HTTPStatus.OK
+    headers: dict[Any, Any] = {"content-type": "application/json"}
+    body: Any = None
+    isBase64Encoded: bool = False
 
 
-class Request:
-    data: dict
-
-    def __init__(self, body: dict):
-        self.data = body
+class Request(BaseModel):
+    event: EventV1 | EventV2
 
 
 class Body(Any):
