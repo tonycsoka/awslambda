@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from http import HTTPStatus
+from ..datatypes import Response
 
 
 class ExceptionMiddleware:
@@ -12,8 +13,4 @@ class ExceptionMiddleware:
             response = self.next(event, context)
             return response
         except Exception as err:
-            return {
-                "isBase64Encoded": False,
-                "statusCode": HTTPStatus.BAD_REQUEST,
-                "body": err,
-            }
+            return Response(statusCode = HTTPStatus.BAD_REQUEST, body = err)

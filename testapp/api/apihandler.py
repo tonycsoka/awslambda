@@ -1,5 +1,6 @@
 import inspect
 import re
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
@@ -12,7 +13,8 @@ from structlog import get_logger
 from .middleware.excep import ExceptionMiddleware
 
 from .middleware import CORS_HEADERS
-from .multipart import MultipartDecoder
+
+from .datatypes import Context, Body, Request, Response, Headers, File
 
 
 def _populate_parameters(f_sig, payload, *args, **kwargs):
@@ -143,12 +145,9 @@ class Api:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
             except TypeError as err:
-                return {"statusCode": HTTPStatus.NOT_FOUND.value, "body": f"{err}"}
+                return Response(statusCode=HTTPStatus.NOT_FOUND, body = err)
             except ValidationError as err:
-                return {
-                    "statusCode": HTTPStatus.BAD_REQUEST.value,
-                    "body": f"{err.json()}",
-                }
+                return Response(statusCode = HTTPStatus.BAD_REQUEST, body = err)
 
         parsed_data = Api.ParseData(
             func=call_api_endpoint,
@@ -206,10 +205,11 @@ class Api:
 
         for f in self.middleware:
             func = f(func)
+        logger.info("Adding ExceptionMiddleware")
         func = ExceptionMiddleware(func)
 
         response = func(event, context)
-        return response
+        return response.model_dump(mode="json")
 
     def _lambda_handler(self, event, context):
         logger = get_logger()
@@ -251,16 +251,18 @@ class Api:
         *,
         query_params: dict,
         event: dict,
-        context: dict,
-        body: dict,
+        context: Any,
+        body: Any,
         headers: dict,
-    ):
+    ) -> Response:
         logger = get_logger()
         if not query_params:
             query_params = {}
         for rpath, parse_d in self.endpoints[HTTPMethod(method)].items():
             values = re.match(rpath, full_path.rstrip("/"))
             if values:
+                logger.info("Handler", method=method, full_path=full_path, query_params=query_params, body=body)
+                logger.info("Found path", ep_path=rpath)
                 response = Response(statusCode=parse_d.response_status)
                 params = {}
                 for i, j in zip(parse_d.url_params, values.groups()):
@@ -285,68 +287,10 @@ class Api:
 
                 body = parse_d.func(payload, **params)
                 if body:
-                    response.body = body
+                    response.body = json.dumps(body)
                 return response
-        return {
-            "statusCode": HTTPStatus.NOT_FOUND.value,
-            "body": "Unknown path",
-        }
-
-
-class Context:
-    data: dict
-
-    def __init__(self, body: dict):
-        self.data = body
-
-
-class Response(BaseModel):
-    statusCode:HTTPStatus = HTTPStatus.OK
-    headers:dict[Any,Any] = {}
-    body:Any = None
-    isBase64Encoded:bool = False
-
-
-class Request:
-    data: dict
-
-    def __init__(self, body: dict):
-        self.data = body
-
-
-class Body(str):
-    pass
-
-
-class Headers(dict):
-    pass
-
-
-class File:
-    headers: Headers
-    content: str
-
-    def __init__(self, content: str, headers: Headers):
-        self.content = content
-        self.headers = headers
-        self.extract_file()
-
-    def extract_file(self):
-        content_type = self.headers["Content-Type"]
-
-        multipart_data = MultipartDecoder(self.content, content_type)
-
-        filename = None
-        part = multipart_data.parts[0]
-        content = part.content
-        disposition = part.headers[b"Content-Disposition"]
-        for content_info in str(disposition).split(";"):
-            info = content_info.split("=", 2)
-            if info[0].strip() == "filename":
-                filename = info[1].strip("\"'\t \r\n")
-        assert filename is not None
-        self.filename = filename
-        self.file = content
+        logger.info("No path found", requested_path=full_path)
+        return Response(statusCode=HTTPStatus.NOT_FOUND, body="Unknown path")
 
 
 class Depends:

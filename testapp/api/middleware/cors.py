@@ -30,7 +30,7 @@ class CorsMiddleware:
         # Do stuff
         _headers = get_cors_headers(event)
         response = self.next(event, context)
-        response["headers"] = (
-            {**response["headers"], **_headers} if "headers" in response else _headers
+        response.headers = (
+            {**(response.headers), **_headers} if response.headers else _headers
         )
         return response

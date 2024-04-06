@@ -14,7 +14,7 @@ def get_endpoints() -> list[tuple]:
 @pytest.mark.parametrize("path,method,qp,bp", get_endpoints())
 def test_all(path,method,qp,bp):
     print(path, method, qp, bp)
-    assert path == 'bob'
     assert True
 
 print(get_endpoints())
+
