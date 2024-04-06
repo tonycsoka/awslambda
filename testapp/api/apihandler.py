@@ -210,14 +210,27 @@ class Api:
 
         response = func(event, context)
         return response.model_dump(mode="json")
+        
+    @staticmethod
+    def parse_event(event) -> tuple:
+        if event.get("version", "1.0") == "1.0":
+            params = event.get("queryStringParameters")
+            raw_path = event.get("path", "")
+            method = event.get("httpMethod")
+            content = event.get("body")
+            headers = event.get("headers")
+        else:
+            params = event.get("queryStringParameters")
+            raw_path = event.get("requestContext").get("http").get("path", "")
+            method = event.get("requestContext").get("http").get("method")
+            content = event.get("body")
+            headers = event.get("headers")
+        return params, raw_path, method, content, headers
+
 
     def _lambda_handler(self, event, context):
         logger = get_logger()
-        params = event.get("queryStringParameters")
-        raw_path = event.get("path", "")
-        method = event.get("httpMethod")
-        content = event.get("body")
-        headers = event.get("headers")
+        params,raw_path,method,content,headers = Api.parse_event(event)
 
         logger.info(
             "Handling request",
