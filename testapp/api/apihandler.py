@@ -14,13 +14,10 @@ from testapp.api.exceptions import HttpException
 
 from .middleware.excep import ExceptionMiddleware
 
-from .middleware import CORS_HEADERS
-
 from .datatypes import Context, Body, Request, Response, Headers, File
 
 from .aws.awseventv1 import EventV1
 from .aws.awseventv2 import EventV2
-from testapp.api.middleware import excep
 
 
 def _populate_parameters(f_sig, payload, *args, **kwargs):
