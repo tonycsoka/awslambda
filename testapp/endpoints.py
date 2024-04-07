@@ -1,9 +1,13 @@
 from http import HTTPStatus
 from testapp.api.datatypes import Request, Response
+from testapp.api.middleware.auth import AuthMiddleware
+from testapp.api.middleware.cors import CorsMiddleware
 from .api import Api
 from datetime import datetime, UTC
 
 app = Api()
+app.add_middleware(CorsMiddleware)
+app.add_middleware(AuthMiddleware)
 
 
 @app.get("/test/{uid}")

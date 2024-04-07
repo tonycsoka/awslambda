@@ -12,7 +12,7 @@ from structlog import get_logger
 
 from testapp.api.exceptions import HttpException
 
-from .middleware.excep import ExceptionMiddleware, serialise_exception
+from .middleware.excep import ExceptionMiddleware
 
 from .middleware import CORS_HEADERS
 
@@ -20,6 +20,7 @@ from .datatypes import Context, Body, Request, Response, Headers, File
 
 from .aws.awseventv1 import EventV1
 from .aws.awseventv2 import EventV2
+from testapp.api.middleware import excep
 
 
 def _populate_parameters(f_sig, payload, *args, **kwargs):
@@ -211,6 +212,7 @@ class Api:
 
     def lambda_handler(self, event, context):
         logger = get_logger()
+        event = Api.make_event(event)
         logger.debug(event)
 
         func = self._lambda_handler
@@ -221,7 +223,16 @@ class Api:
         func = ExceptionMiddleware(func)
 
         response = func(event, context)
-        return response.model_dump(mode="json")
+        try:
+            if response.headers[
+                "content-type"
+            ] == "application/json" and not issubclass(type(response.body), BaseModel):
+                response.body = json.dumps(response.body, default=str)
+            return response.model_dump(mode="json")
+        except Exception as err:
+            return Response(
+                statusCode=HTTPStatus.INTERNAL_SERVER_ERROR, body=err.__str__()
+            ).model_dump(mode="json")
 
     @staticmethod
     def make_event(event):
@@ -248,7 +259,6 @@ class Api:
 
     def _lambda_handler(self, event, context):
         logger = get_logger()
-        event = Api.make_event(event)
         params, raw_path, method, content, headers = Api.parse_event(event)
 
         logger.info(
@@ -266,7 +276,7 @@ class Api:
             event=event,
             context=context,
             body=content,
-            headers={**headers, **CORS_HEADERS},
+            headers=headers,
         )
 
         return api_out
@@ -325,7 +335,7 @@ class Api:
 
                 body = parse_d.func(payload, **params)
                 if body:
-                    response.body = json.dumps(body, default=str)
+                    response.body = body
                 return response
         logger.info("No path found", requested_path=full_path)
         return Response(statusCode=HTTPStatus.NOT_FOUND, body="Unknown path")

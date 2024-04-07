@@ -1,6 +1,14 @@
 from collections.abc import Callable
+from http import HTTPStatus
 
-ALLOWED_ORIGINS = ["http://localhost:3001", "https://d391wccgyuzfh3.cloudfront.net"]
+from testapp.api.aws.awseventv1 import EventV1
+from testapp.api.aws.awseventv2 import EventV2
+from testapp.api.exceptions import HttpException
+
+ALLOWED_ORIGINS = [
+    "http://localhost:3001",
+    "https://d391wccgyuzfh3.cloudfront.net",
+]
 
 CORS_HEADERS = {
     "Access-Control-Allow-Methods": "GET,OPTIONS,POST,PUT,PATCH,DELETE",
@@ -9,17 +17,22 @@ CORS_HEADERS = {
 }
 
 
-def get_cors_headers(payload: dict) -> dict:
+def get_cors_headers(event: EventV1 | EventV2) -> dict:
     """Construct CORS headers for API handler response.
 
     CORS headers from requests containing access credentials must specify allowed origins,
     and cannot use the "*" wildcard.
     More about the CORS policy can be found here: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS#access-control-allow-origin
     """
-    origin = payload["headers"]["origin"]
-    if origin not in ALLOWED_ORIGINS:
-        origin = ""
-    return {"Access-Control-Allow-Origin": origin, **CORS_HEADERS}
+    try:
+        origin = event.headers["origin"]
+        if origin not in ALLOWED_ORIGINS:
+            origin = ""
+        return {"Access-Control-Allow-Origin": origin, **CORS_HEADERS}
+    except KeyError as ex:
+        raise HttpException(
+            status_code=HTTPStatus.BAD_REQUEST, body="Must supply origin in header"
+        )
 
 
 class CorsMiddleware:

@@ -60,7 +60,7 @@ class BodyPart(object):
         if b"\r\n\r\n" in content:
             first, self.content = _split_on_find(content, b"\r\n\r\n")
             if first != b"":
-                headers = _header_parser(first.lstrip(), encoding)
+                headers = dict(_header_parser(first.lstrip(), encoding))
         else:
             raise ImproperBodyPartContentException(
                 "content does not contain CR-LF-CR-LF"

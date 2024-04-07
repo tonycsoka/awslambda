@@ -2,20 +2,6 @@ from collections.abc import Callable
 from http import HTTPStatus
 from ..datatypes import Response
 from ..exceptions import HttpException
-import sys
-import traceback
-
-
-def serialise_exception(exc) -> dict:
-    tb = traceback.TracebackException.from_exception(exc, capture_locals=True)
-
-    return {
-        "title": type(exc).__name__,
-        "message": str(exc),
-        "traceback": [
-            line for part in tb.format() for line in part.split("\n") if line.strip()
-        ],
-    }
 
 
 class ExceptionMiddleware:
@@ -30,6 +16,4 @@ class ExceptionMiddleware:
         except HttpException as err:
             return Response(statusCode=err.status_code, body=err.body)
         except Exception as err:
-            return Response(
-                statusCode=HTTPStatus.BAD_REQUEST, body=serialise_exception(err)
-            )
+            return Response(statusCode=HTTPStatus.BAD_REQUEST, body=err.__str__())

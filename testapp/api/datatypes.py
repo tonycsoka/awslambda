@@ -50,7 +50,7 @@ class File:
         filename = None
         part = multipart_data.parts[0]
         content = part.content
-        disposition = part.headers[b"Content-Disposition"]
+        disposition = part.headers["Content-Disposition"]
         for content_info in str(disposition).split(";"):
             info = content_info.split("=", 2)
             if info[0].strip() == "filename":
