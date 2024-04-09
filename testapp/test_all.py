@@ -28,12 +28,3 @@ def test_all(path, method, qp, bp):
 
 
 print(get_endpoints())
-
-
-def do_it(s: str, d: str) -> str:
-    return "hello"
-
-
-import inspect
-
-print(inspect.signature(do_it))
