@@ -1,5 +1,8 @@
 from collections.abc import Callable
 from http import HTTPStatus
+
+from structlog import get_logger
+
 from ..datatypes import Response
 from ..exceptions import HttpException
 
@@ -16,4 +19,8 @@ class ExceptionMiddleware:
         except HttpException as err:
             return Response(statusCode=err.status_code, body=err.body)
         except Exception as err:
-            return Response(statusCode=HTTPStatus.BAD_REQUEST, body=err.__str__())
+            logger = get_logger()
+            logger.exception("Unhandled Exception")
+            return Response(
+                statusCode=HTTPStatus.INTERNAL_SERVER_ERROR, body=err.__str__()
+            )

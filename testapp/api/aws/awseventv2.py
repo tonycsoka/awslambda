@@ -2,34 +2,35 @@
 #   filename:  awseventv2.json
 #   timestamp: 2024-04-06T16:10:00+00:00
 
-from typing import Literal
+from typing import Any, Literal
+
 from pydantic import BaseModel
 
 
 class Validity(BaseModel):
-    notBefore: str
-    notAfter: str
+    notBefore: str | None = None
+    notAfter: str | None = None
 
 
 class ClientCert(BaseModel):
-    clientCertPem: str
-    subjectDN: str
-    issuerDN: str
-    serialNumber: str
-    validity: Validity
+    clientCertPem: str | None = None
+    subjectDN: str | None = None
+    issuerDN: str | None = None
+    serialNumber: str | None = None
+    validity: Validity | None = None
 
 
 class Authentication(BaseModel):
-    clientCert: ClientCert
+    clientCert: ClientCert | None = None
 
 
 class Jwt(BaseModel):
-    claims: dict
-    scopes: list[str]
+    claims: dict | None = None
+    scopes: list[str] | None = None
 
 
 class Authorizer(BaseModel):
-    jwt: Jwt
+    jwt: Jwt | None = None
 
 
 class Http(BaseModel):
@@ -58,13 +59,13 @@ class RequestContext(BaseModel):
 class EventV2(BaseModel):
     version: Literal["2.0"]
     routeKey: str | None = None
-    rawPath: str
+    rawPath: str | None = None
     rawQueryString: str
     cookies: list[str] | None = None
-    headers: dict
-    queryStringParameters: dict
+    headers: dict | None = None
+    queryStringParameters: dict | None = None
     requestContext: RequestContext
-    body: str | None = None
+    body: Any | None = None
     pathParameters: dict | None = None
     isBase64Encoded: bool = False
     stageVariables: dict | None = None

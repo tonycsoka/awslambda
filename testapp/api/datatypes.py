@@ -1,10 +1,11 @@
+from http import HTTPStatus
+from typing import Any
+
 from pydantic import BaseModel
 
 from .aws.awseventv1 import EventV1
 from .aws.awseventv2 import EventV2
 from .multipart import MultipartDecoder
-from http import HTTPStatus
-from typing import Any
 
 
 class Context:
@@ -21,7 +22,7 @@ class Response(BaseModel):
     isBase64Encoded: bool = False
 
 
-class Request(BaseModel):
+class Event(BaseModel):
     event: EventV1 | EventV2
 
 
@@ -50,7 +51,7 @@ class File:
         filename = None
         part = multipart_data.parts[0]
         content = part.content
-        disposition = part.headers["Content-Disposition"]
+        disposition = part.headers[b"Content-Disposition"]
         for content_info in str(disposition).split(";"):
             info = content_info.split("=", 2)
             if info[0].strip() == "filename":

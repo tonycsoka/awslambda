@@ -1,6 +1,5 @@
 import inspect
 import re
-import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
@@ -10,17 +9,22 @@ from typing import Annotated, Any, OrderedDict, get_args, get_origin
 from pydantic import BaseModel, ValidationError
 from structlog import get_logger
 
-from testapp.api.exceptions import HttpException
-
-from .middleware.excep import ExceptionMiddleware
-
-from .datatypes import Context, Body, Request, Response, Headers, File
-
 from .aws.awseventv1 import EventV1
 from .aws.awseventv2 import EventV2
+from .datatypes import Body, Context, Event, File, Headers, Response
+from .exceptions import HttpException
+from .middleware.excep import ExceptionMiddleware
 
 
-def _populate_parameters(f_sig, payload, *args, **kwargs):
+def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwargs):
+    """
+    Populates funcion bound parameters based on the signature, and parameters passed in via
+    the payload, args, and kwargs
+
+    Returns the bound args and kwargs
+
+    Takes special care of Api datatypes defined in .datatypes and dependencies using Depends
+    """
     skip_bound = False
     for field, param in f_sig.parameters.items():
         an_type = param.annotation
@@ -32,7 +36,7 @@ def _populate_parameters(f_sig, payload, *args, **kwargs):
             kwargs[field] = an_type(payload["body"])
         elif an_type == Context:
             kwargs[field] = an_type(payload["context"])
-        elif an_type == Request:
+        elif an_type == Event:
             kwargs[field] = an_type(event=payload["event"])
         elif an_type == Headers:
             kwargs[field] = an_type(payload["headers"])
@@ -89,6 +93,14 @@ class Api:
 
     @staticmethod
     def _process_path(path: str, func: Callable):
+        """
+        Processes the annotated path and function of and endpoint to
+        return the the url types associated with each parameter (path,
+        query or a dependency), together with a regex url matcher for
+        the path and the python types of each parameter.
+
+        Handles api dataclass and Dependeny
+        """
         rpath = r"{}".format(path.rstrip("/"))
 
         query_params = []
@@ -104,7 +116,7 @@ class Api:
             if field in url_params:
                 rpath = rpath.replace(r"{{{}}}".format(field), Api.regexes[annotation])
                 param_types[field] = annotation
-            elif annotation and annotation in [Body, File, Request, Context, Headers]:
+            elif annotation and annotation in [Body, File, Event, Context, Headers]:
                 if annotation in [Body, File]:
                     body_params.append(field)
                     param_types[field] = annotation
@@ -220,20 +232,11 @@ class Api:
         func = ExceptionMiddleware(func)
 
         response = func(event, context)
-        try:
-            if response.headers[
-                "content-type"
-            ] == "application/json" and not issubclass(type(response.body), BaseModel):
-                response.body = json.dumps(response.body, default=str)
-            return response.model_dump(mode="json")
-        except Exception as err:
-            return Response(
-                statusCode=HTTPStatus.INTERNAL_SERVER_ERROR, body=err.__str__()
-            ).model_dump(mode="json")
+        return response
 
     @staticmethod
     def make_event(event):
-        return Request(event=event).event
+        return Event(event=event).event
 
     @staticmethod
     def parse_event(event: EventV1 | EventV2) -> tuple:

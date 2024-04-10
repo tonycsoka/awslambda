@@ -2,74 +2,78 @@
 #   filename:  awseventv1.json
 #   timestamp: 2024-04-06T16:10:15+00:00
 
-from typing import Literal
+from typing import Any, Literal
+
 from pydantic import BaseModel
 
 
 class Authorizer(BaseModel):
-    claims: dict
-    scopes: dict
+    claims: dict | None = None
+    scopes: dict | None = None
 
 
 class Validity(BaseModel):
-    notBefore: str
-    notAfter: str
+    notBefore: str | None = None
+    notAfter: str | None = None
 
 
 class ClientCert(BaseModel):
-    clientCertPem: str
-    subjectDN: str
-    issuerDN: str
-    serialNumber: str
-    validity: Validity
+    clientCertPem: str | None = None
+    subjectDN: str | None = None
+    issuerDN: str | None = None
+    serialNumber: str | None = None
+    validity: Validity | None = None
 
 
 class Identity(BaseModel):
-    accessKey: str | None
-    accountId: str | None
-    caller: str | None
-    cognitoAuthenticationProvider: str | None
-    cognitoAuthenticationType: str | None
-    cognitoIdentityId: str | None
-    cognitoIdentityPoolId: str | None
-    principalOrgId: str | None
-    sourceIp: str
-    user: str | None
-    userAgent: str
-    userArn: str | None
-    clientCert: ClientCert
+    accessKey: str | None = None
+    accountId: str | None = None
+    caller: str | None = None
+    cognitoAuthenticationProvider: str | None = None
+    cognitoAuthenticationType: str | None = None
+    cognitoIdentityId: str | None = None
+    cognitoIdentityPoolId: str | None = None
+    principalOrgId: str | None = None
+    sourceIp: str | None = None
+    user: str | None = None
+    userAgent: str | None = None
+    userArn: str | None = None
+    clientCert: ClientCert | None = None
 
 
 class RequestContext(BaseModel):
-    accountId: str
-    apiId: str
-    authorizer: Authorizer
-    domainName: str
-    domainPrefix: str
-    extendedRequestId: str
-    httpMethod: str
-    identity: Identity
-    path: str
-    protocol: str
-    requestId: str
-    requestTime: str
-    requestTimeEpoch: int
-    resourceId: str | None
-    resourcePath: str
-    stage: str
+    accountId: str | None = None
+    apiId: str | None = None
+    authorizer: Authorizer | None = None
+    domainName: str | None = None
+    domainPrefix: str | None = None
+    extendedRequestId: str | None = None
+    httpMethod: str | None = None
+    identity: Identity | None = None
+    path: str | None = None
+    protocol: str | None = None
+    requestId: str | None = None
+    requestTime: str | None = None
+    requestTimeEpoch: int | None = None
+    resourceId: str | None = None
+    resourcePath: str | None = None
+    stage: str | None = None
 
 
 class EventV1(BaseModel):
     version: Literal["1.0"]
     resource: str | None = None
-    path: str
-    httpMethod: str
-    headers: dict
+    path: str | None = None
+    httpMethod: str | None = None
+    headers: dict | None = None
     multiValueHeaders: dict | None = None
-    queryStringParameters: dict
+    queryStringParameters: dict | None = None
     multiValueQueryStringParameters: dict | None = None
     requestContext: RequestContext | None = None
     pathParameters: dict | None = None
     stageVariables: dict | None = None
-    body: str | None = None
+    body: Any | None = None
     isBase64Encoded: bool = False
+    ## Trilodocs added
+    authorizationToken: str | None = None
+    methodArn: str | None = None
