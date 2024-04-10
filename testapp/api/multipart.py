@@ -148,7 +148,7 @@ class MultipartDecoder(object):
                 and part != b"--"
             )
 
-        parts = content.split(b"".join((b"\r\n", boundary)))
+        parts = encode_with(content, self.encoding).split(b"".join((b"\r\n", boundary)))
         self.parts = tuple(body_part(x) for x in parts if test_part(x))
 
     @classmethod
