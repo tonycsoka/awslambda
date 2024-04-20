@@ -26,7 +26,7 @@ def test_lambda_handler():
     def test_ep():
         return "Test"
 
-    event = {"version": "1.0", "httpMethod": "GET", "path": "/test"}
+    event = {"httpMethod": "GET", "path": "/test", "headers": {}}
     context = {}
 
     response = api.lambda_handler(event, context)
@@ -77,7 +77,7 @@ def test_unhandled_excep():
             self.next = next
 
         def __call__(self, event, context):
-            raise NotImplemented()
+            raise NotImplementedError()
 
     api.add_middleware(DummyMiddleware)
 
@@ -85,7 +85,7 @@ def test_unhandled_excep():
     def test_ep():
         return "Test"
 
-    event = {"version": "1.0", "httpMethod": "GET", "path": "/test"}
+    event = {"httpMethod": "GET", "path": "/test"}
     context = {}
 
     response = api.lambda_handler(event, context)

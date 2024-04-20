@@ -2,43 +2,15 @@
 #   filename:  awseventv1.json
 #   timestamp: 2024-04-06T16:10:15+00:00
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 
 
 class Authorizer(BaseModel):
-    claims: dict | None = None
-    scopes: dict | None = None
-
-
-class Validity(BaseModel):
-    notBefore: str | None = None
-    notAfter: str | None = None
-
-
-class ClientCert(BaseModel):
-    clientCertPem: str | None = None
-    subjectDN: str | None = None
-    issuerDN: str | None = None
-    serialNumber: str | None = None
-    validity: Validity | None = None
-
-
-class Identity(BaseModel):
-    accessKey: str | None = None
-    accountId: str | None = None
-    caller: str | None = None
-    cognitoAuthenticationProvider: str | None = None
-    cognitoAuthenticationType: str | None = None
-    cognitoIdentityId: str | None = None
-    cognitoIdentityPoolId: str | None = None
-    principalOrgId: str | None = None
-    sourceIp: str | None = None
-    user: str | None = None
-    userAgent: str | None = None
-    userArn: str | None = None
-    clientCert: ClientCert | None = None
+    scope: str | None = None
+    principalId: str | None = None
+    integrationLatency: int | None = None
 
 
 class RequestContext(BaseModel):
@@ -49,7 +21,7 @@ class RequestContext(BaseModel):
     domainPrefix: str | None = None
     extendedRequestId: str | None = None
     httpMethod: str | None = None
-    identity: Identity | None = None
+    identity: dict | None = None
     path: str | None = None
     protocol: str | None = None
     requestId: str | None = None
@@ -61,7 +33,6 @@ class RequestContext(BaseModel):
 
 
 class EventV1(BaseModel):
-    version: Literal["1.0"]
     resource: str | None = None
     path: str | None = None
     httpMethod: str | None = None

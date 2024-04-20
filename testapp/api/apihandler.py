@@ -9,8 +9,7 @@ from typing import Annotated, Any, OrderedDict, get_args, get_origin
 from pydantic import BaseModel, ValidationError
 from structlog import get_logger
 
-from .aws.awseventv1 import EventV1
-from .aws.awseventv2 import EventV2
+from .aws.awsevent import EventV1
 from .datatypes import Body, Context, Event, File, Headers, Response
 from .exceptions import HttpException
 from .middleware.excep import ExceptionMiddleware
@@ -28,11 +27,7 @@ def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwarg
     skip_bound = False
     for field, param in f_sig.parameters.items():
         an_type = param.annotation
-        if an_type == File:
-            kwargs[field] = File(
-                content=payload["body"], headers=Headers(payload["headers"])
-            )
-        elif an_type == Body:
+        if an_type == Body:
             kwargs[field] = an_type(payload["body"])
         elif an_type == Context:
             kwargs[field] = an_type(payload["context"])
@@ -43,7 +38,7 @@ def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwarg
         elif an_type == Response:
             kwargs[field] = payload["response"]
         elif inspect.isclass(an_type) and issubclass(an_type, BaseModel):
-            kwargs[field] = an_type(**payload["body"])
+            kwargs[field] = an_type.model_validate_json(payload["body"])
         elif get_origin(an_type) == Annotated:
             anno_args = get_args(an_type)
             if type(anno_args[1]) == Depends:
@@ -182,11 +177,11 @@ class Api:
             response_status=status_code,
         )
         self.endpoints[HTTPMethod(method)][rpath] = parsed_data
-        if not path in self.path_to_params:
+        if path not in self.path_to_params:
             self.path_to_params[path] = OrderedDict()
-        if not HTTPMethod(method) in self.path_to_params[path]:
+        if HTTPMethod(method) not in self.path_to_params[path]:
             self.path_to_params[path][HTTPMethod(method)] = parsed_data
-        logger.info(f"Registered path", path=path, rpath=rpath)
+        logger.info("Registered path", path=path, rpath=rpath)
         return call_api_endpoint
 
     def get(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
@@ -239,20 +234,13 @@ class Api:
         return Event(event=event).event
 
     @staticmethod
-    def parse_event(event: EventV1 | EventV2) -> tuple:
+    def parse_event(event: EventV1) -> tuple:
         try:
-            if event.version == "1.0":
-                params = event.queryStringParameters
-                raw_path = event.path
-                method = event.httpMethod
-                content = event.body
-                headers = event.headers
-            else:
-                params = event.queryStringParameters
-                raw_path = event.requestContext.http.path
-                method = event.requestContext.http.method
-                content = event.body
-                headers = event.headers
+            params = event.queryStringParameters
+            raw_path = event.path
+            method = event.httpMethod
+            content = event.body
+            headers = event.headers
             return params, raw_path, method, content, headers
         except Exception as e:
             raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=e)
@@ -292,7 +280,7 @@ class Api:
         full_path: str,
         *,
         query_params: dict,
-        event: EventV1 | EventV2,
+        event: EventV1,
         context: Any,
         body: Any,
         headers: dict,

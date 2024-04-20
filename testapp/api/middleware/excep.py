@@ -1,3 +1,4 @@
+import traceback
 from collections.abc import Callable
 from http import HTTPStatus
 
@@ -5,6 +6,8 @@ from structlog import get_logger
 
 from ..datatypes import Response
 from ..exceptions import HttpException
+
+logger = get_logger()
 
 
 class ExceptionMiddleware:
@@ -15,12 +18,15 @@ class ExceptionMiddleware:
         # Do stuff
         try:
             response = self.next(event, context)
-            return response
         except HttpException as err:
-            return Response(statusCode=err.status_code, body=err.body)
-        except Exception as err:
-            logger = get_logger()
-            logger.exception("Unhandled Exception")
-            return Response(
-                statusCode=HTTPStatus.INTERNAL_SERVER_ERROR, body=err.__str__()
+            logger.exception("Unhandled Exception", body=err.body)
+            response = Response(statusCode=err.status_code, body=err.status_code.phrase)
+        except Exception:
+            logger.exception("Unhandled Exception", body=traceback.format_exc())
+            response = Response(
+                statusCode=HTTPStatus.INTERNAL_SERVER_ERROR,
+                body=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
             )
+
+        logger.info("Status code", status_code=response.statusCode.value)
+        return response
