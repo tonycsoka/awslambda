@@ -2,7 +2,7 @@ resource "aws_ecr_repository" "app_ecr_repo" {
   name = "app-repo"
 }
 
-resource "null_resource" "docker_packaging" {
+resource "terraform_data" "docker_packaging" {
   triggers = {
     "run_at" = timestamp()
     files = "${filebase64sha256("../Dockerfile")}"
