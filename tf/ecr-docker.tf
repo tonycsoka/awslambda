@@ -1,5 +1,5 @@
-resource "aws_ecr_repository" "app_ecr_repo" {
-  name = "app-repo"
+resource "aws_ecr_repository" "backend" {
+  name = "backend"
 }
 
 resource "terraform_data" "docker_packaging" {
