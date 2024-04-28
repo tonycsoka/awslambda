@@ -35,6 +35,8 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=eu-west-2
+      - S3_HOSTNAME=localstack
+      - AWS_ENDPOINT_URL_S3=http://localstack:4566
     volumes:
       - .:/code
       - "/var/run/docker.sock:/var/run/docker.sock"

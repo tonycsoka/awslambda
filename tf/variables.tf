@@ -9,3 +9,9 @@ variable "stage" {
   type        = string
   default     = "localstack"
 }
+
+variable "project_name" {
+  description = "Project name"
+  type        = string
+  default     = "testapp"
+}
