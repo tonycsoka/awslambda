@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
 from http import HTTPStatus
-from testapp.api.datatypes import File, Event, Response
+
+from testapp.api.datatypes import Event, File, Response
 from testapp.api.middleware.auth import AuthMiddleware
 from testapp.api.middleware.cors import CorsMiddleware
+
 from .api import Api
-from datetime import datetime, UTC
 
 app = Api()
 
@@ -17,7 +19,7 @@ def get_test(uid: str):
 def post_test(uid: str, file: File, resp: Response):
     resp.isBase64Encoded = True
     resp.headers = {"content-type": "image/jpeg"}
-    return file.file
+    return file.filename
 
 
 @app.get("/test/{uid}/req/{reqid}")

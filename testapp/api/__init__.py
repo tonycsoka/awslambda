@@ -12,3 +12,5 @@ __all__ = (
     "Headers",
     "Depends",
 )
+
+a = {"A": "B", "C": "D"}

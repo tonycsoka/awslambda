@@ -19,6 +19,17 @@ resource "aws_s3_bucket_acl" "frontend" {
   acl    = "public-read"
 }
 
+resource "aws_s3_object" "object_www" {
+  depends_on   = [aws_s3_bucket.frontend]
+  for_each     = fileset("${path.root}", "../frontend/*.html")
+  bucket       = aws_s3_bucket.frontend.bucket
+  key          = basename(each.value)
+  source       = each.value
+  etag         = filemd5("${each.value}")
+  content_type = "text/html"
+  acl          = "public-read"
+}
+
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 

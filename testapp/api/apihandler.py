@@ -41,7 +41,7 @@ def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwarg
             kwargs[field] = an_type.model_validate_json(payload["body"])
         elif get_origin(an_type) == Annotated:
             anno_args = get_args(an_type)
-            if type(anno_args[1]) == Depends:
+            if type(anno_args[1]) is Depends:
                 kwargs[field] = anno_args[1](payload=payload)
                 skip_bound = True
 
@@ -49,7 +49,7 @@ def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwarg
     bound.apply_defaults()
     if not skip_bound:
         for k, arg in bound.arguments.items():
-            if type(arg) == Depends:
+            if type(arg) is Depends:
                 bound.arguments[k] = arg(payload=payload)
     return bound
 
@@ -126,7 +126,7 @@ class Api:
                 param_types[field] = annotation
             elif annotation and get_origin(annotation) == Annotated:
                 anno_args = get_args(annotation)
-                if type(anno_args[1]) == Depends:
+                if type(anno_args[1]) is Depends:
                     depends.append(field)
                     param_types[field] = annotation
             else:
