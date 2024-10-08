@@ -1,4 +1,4 @@
-from typing import Protocol, Self
+from typing import Protocol
 
 
 class HasValueProtocol(Protocol):
@@ -66,3 +66,25 @@ class Condition:
             exc_str = r"(?!^.*\b(?:{i})\b)".format(i=r"|".join(self.excludes))
 
         return r"".join([exc_str, inc_str])
+
+
+class Indenter:
+    fs: int
+
+    def __init__(self) -> None:
+        self.fs = 24
+
+    def submit(self, mo):
+        if mo.group(4):
+            factor = (self.fs * 50) / 9
+            r = "".join([r"\enspace"] * int(round(int(mo.group(4)), -2) / factor))
+            return r
+        if mo.group(2):
+            fs = int(mo.group(2))
+            if fs > 0:
+                self.fs = fs
+
+        return mo.group(0)
+
+
+print("hello")

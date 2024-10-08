@@ -17,8 +17,8 @@ from .middleware.excep import ExceptionMiddleware
 
 def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwargs):
     """
-    Populates funcion bound parameters based on the signature, and parameters passed in via
-    the payload, args, and kwargs
+    Populates funcion bound parameters based on the signature, and parameters passed in
+    via the payload, args, and kwargs
 
     Returns the bound args and kwargs
 
@@ -96,7 +96,7 @@ class Api:
 
         Handles api dataclass and Dependeny
         """
-        rpath = r"{}".format(path.rstrip("/"))
+        rpath = f'{path.rstrip("/")}'
 
         query_params = []
         body_params = []
@@ -132,7 +132,7 @@ class Api:
             else:
                 query_params.append(field)
                 param_types[field] = annotation
-        rpath = rpath + r"$"
+        rpath = f"{rpath}$"
 
         return (
             rpath,
@@ -226,8 +226,7 @@ class Api:
         logger.info("Adding ExceptionMiddleware")
         func = ExceptionMiddleware(func)
 
-        response = func(event, context)
-        return response
+        return func(event, context)
 
     @staticmethod
     def make_event(event):
@@ -243,7 +242,7 @@ class Api:
             headers = event.headers
             return params, raw_path, method, content, headers
         except Exception as e:
-            raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=e)
+            raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=e) from e
 
     def _lambda_handler(self, event, context):
         logger = get_logger()
@@ -257,7 +256,7 @@ class Api:
             Context=context,
         )
 
-        api_out = self.handler(
+        return self.handler(
             method=method,
             full_path=raw_path,
             query_params=params,
@@ -266,8 +265,6 @@ class Api:
             body=content,
             headers=headers,
         )
-
-        return api_out
 
     def add_middleware(self, middleware: Callable):
         logger = get_logger()
@@ -289,8 +286,7 @@ class Api:
         if not query_params:
             query_params = {}
         for rpath, parse_d in self.endpoints[HTTPMethod(method)].items():
-            values = re.match(rpath, full_path.rstrip("/"))
-            if values:
+            if values := re.match(rpath, full_path.rstrip("/")):
                 logger.info(
                     "Handler",
                     method=method,
