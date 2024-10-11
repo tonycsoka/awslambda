@@ -32,7 +32,7 @@ def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwarg
         elif an_type == Context:
             kwargs[field] = an_type(payload["context"])
         elif an_type == Event:
-            kwargs[field] = an_type(event=payload["event"])
+            kwargs[field] = an_type(payload["event"])
         elif an_type == Headers:
             kwargs[field] = an_type(payload["headers"])
         elif an_type == Response:
@@ -144,9 +144,7 @@ class Api:
             param_types,
         )
 
-    def _add_api_endpoint(
-        self, method: str, path: str, func: Callable, status_code: HTTPStatus
-    ):
+    def _add_api_endpoint(self, method: str, path: str, func: Callable, status_code: HTTPStatus):
         logger = get_logger()
         rpath, f_sig, url_params, query_params, body_params, depends, param_types = (
             Api._process_path(path, func)
@@ -158,13 +156,9 @@ class Api:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
             except TypeError as err:
-                raise HttpException(
-                    status_code=HTTPStatus.NOT_FOUND, body=err.__str__()
-                )
+                raise HttpException(status_code=HTTPStatus.NOT_FOUND, body=err.__str__())
             except ValidationError as err:
-                raise HttpException(
-                    status_code=HTTPStatus.BAD_REQUEST, body=err.__str__()
-                )
+                raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=err.__str__())
 
         parsed_data = Api.ParseData(
             func=call_api_endpoint,
