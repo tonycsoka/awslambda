@@ -15,7 +15,9 @@ from .exceptions import HttpException
 from .middleware.excep import ExceptionMiddleware
 
 
-def _populate_parameters(f_sig: inspect.Signature, payload: dict, *args, **kwargs):
+def _populate_parameters(
+    f_sig: inspect.Signature, payload: dict, *args, **kwargs
+) -> inspect.BoundArguments:
     """
     Populates funcion bound parameters based on the signature, and parameters passed in
     via the payload, args, and kwargs
@@ -87,7 +89,7 @@ class Api:
         self.middleware = []
 
     @staticmethod
-    def _process_path(path: str, func: Callable):
+    def _process_path(path: str, func: Callable) -> tuple:
         """
         Processes the annotated path and function of and endpoint to
         return the the url types associated with each parameter (path,
@@ -144,14 +146,16 @@ class Api:
             param_types,
         )
 
-    def _add_api_endpoint(self, method: str, path: str, func: Callable, status_code: HTTPStatus):
+    def _add_api_endpoint(
+        self, method: str, path: str, func: Callable, status_code: HTTPStatus
+    ) -> Callable:
         logger = get_logger()
         rpath, f_sig, url_params, query_params, body_params, depends, param_types = (
             Api._process_path(path, func)
         )
 
         @wraps(func)
-        def call_api_endpoint(payload: dict, *args, **kwargs):
+        def call_api_endpoint(payload: dict, *args, **kwargs) -> Callable:
             try:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
@@ -178,32 +182,32 @@ class Api:
         logger.info("Registered path", path=path, rpath=rpath)
         return call_api_endpoint
 
-    def get(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
-        def deco(func: Callable):
+    def get(self, path: str, status_code: HTTPStatus = HTTPStatus.OK) -> Callable:
+        def deco(func: Callable) -> Callable:
             return self._add_api_endpoint(HTTPMethod.GET, path, func, status_code)
 
         return deco
 
-    def put(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
-        def deco(func: Callable):
+    def put(self, path: str, status_code: HTTPStatus = HTTPStatus.OK) -> Callable:
+        def deco(func: Callable) -> Callable:
             return self._add_api_endpoint(HTTPMethod.PUT, path, func, status_code)
 
         return deco
 
-    def post(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
-        def deco(func: Callable):
+    def post(self, path: str, status_code: HTTPStatus = HTTPStatus.OK) -> Callable:
+        def deco(func: Callable) -> Callable:
             return self._add_api_endpoint(HTTPMethod.POST, path, func, status_code)
 
         return deco
 
-    def patch(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
-        def deco(func: Callable):
+    def patch(self, path: str, status_code: HTTPStatus = HTTPStatus.OK) -> Callable:
+        def deco(func: Callable) -> Callable:
             return self._add_api_endpoint(HTTPMethod.PATCH, path, func, status_code)
 
         return deco
 
-    def delete(self, path: str, status_code: HTTPStatus = HTTPStatus.OK):
-        def deco(func: Callable):
+    def delete(self, path: str, status_code: HTTPStatus = HTTPStatus.OK) -> Callable:
+        def deco(func: Callable) -> Callable:
             return self._add_api_endpoint(HTTPMethod.DELETE, path, func, status_code)
 
         return deco
@@ -223,7 +227,7 @@ class Api:
         return func(event, context)
 
     @staticmethod
-    def make_event(event):
+    def make_event(event) -> EventV1:
         return Event(event=event).event
 
     @staticmethod
@@ -238,7 +242,7 @@ class Api:
         except Exception as e:
             raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=e) from e
 
-    def _lambda_handler(self, event, context):
+    def _lambda_handler(self, event, context) -> Response:
         logger = get_logger()
         params, raw_path, method, content, headers = Api.parse_event(event)
 
