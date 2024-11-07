@@ -45,6 +45,5 @@ class EventV1(BaseModel):
     stageVariables: dict | None = None
     body: Any | None = None
     isBase64Encoded: bool = False
-    ## Trilodocs added
     authorizationToken: str | None = None
     methodArn: str | None = None
