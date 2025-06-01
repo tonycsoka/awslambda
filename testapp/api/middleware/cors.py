@@ -9,9 +9,6 @@ from ..exceptions import HttpException
 
 ALLOWED_ORIGINS = [
     "http://localhost:3001",
-    "https://d391wccgyuzfh3.cloudfront.net",
-    "https://app.test.trilodocs.com",
-    "https://*.app.test.trilodocs.com",
 ]
 
 CORS_HEADERS = {
