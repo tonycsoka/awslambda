@@ -1,4 +1,5 @@
 import pytest
+
 from testapp.endpoints import app
 
 
