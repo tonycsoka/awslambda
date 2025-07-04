@@ -98,7 +98,7 @@ class Api:
 
         Handles api dataclass and Dependeny
         """
-        rpath = f'{path.rstrip("/")}'
+        rpath = f"{path.rstrip('/')}"
 
         query_params = []
         body_params = []
@@ -160,9 +160,13 @@ class Api:
                 bound = _populate_parameters(f_sig, payload, *args, **kwargs)
                 return func(*bound.args, **bound.kwargs)
             except TypeError as err:
-                raise HttpException(status_code=HTTPStatus.NOT_FOUND, body=err.__str__())
+                raise HttpException(
+                    status_code=HTTPStatus.NOT_FOUND, body=err.__str__()
+                )
             except ValidationError as err:
-                raise HttpException(status_code=HTTPStatus.BAD_REQUEST, body=err.__str__())
+                raise HttpException(
+                    status_code=HTTPStatus.BAD_REQUEST, body=err.__str__()
+                )
 
         parsed_data = Api.ParseData(
             func=call_api_endpoint,
